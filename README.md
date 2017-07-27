@@ -28,7 +28,8 @@ Finally both cases could be analyzed for either backlinks, forward links, or bot
 
 ## Implementation
 - [x] Sort pages by number of backlinks via commandline
-- [ ] Sort pages by number of backlinks via dialog
+- [x] Sort pages by number of backlinks via dialog
+- [ ] Make listview in dialog robust for very large notebooks
 - [ ] Compare pages by number of backlinks via commandline
 - [ ] Compare pages by number of via backlinks dialog
 - [ ] Sort pages in "influence network" of a given starting page by degree and number of occurrences via commandline
