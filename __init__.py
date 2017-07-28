@@ -28,50 +28,49 @@ This plugin provides functions to analyze the link structure of a notebook
 			# T: option for plugin preferences
 	)
 
-	@classmethod
-	def sort_by_number_of_links(cls, notebook, dir):
-		assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
-		source, target = 'source', 'target'
-		if dir == LINK_DIR_BACKWARD:
-			source, target = target, source # reverse lookup
 
-		return notebook.links.db.execute('''
-			SELECT count({target}), pages.name FROM links
-			JOIN pages ON links.{source}=pages.id
+def sort_by_number_of_links(notebook, dir):
+	assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
+	source, target = 'source', 'target'
+	if dir == LINK_DIR_BACKWARD:
+		source, target = target, source # reverse lookup
+
+	return notebook.links.db.execute('''
+		SELECT count({target}), pages.name FROM links
+		JOIN pages ON links.{source}=pages.id
+		GROUP BY {source}
+		ORDER BY count({target}) DESC
+	'''.format(source=source, target=target))
+
+def compare_by_links(notebook, dir):
+	assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
+	source, target = 'source', 'target'
+	if dir == LINK_DIR_BACKWARD:
+		source, target = target, source # reverse lookup
+
+	# Select all pages that have any links, sorted by number of links
+	for total, pageid, page1 in notebook.links.db.execute('''
+		SELECT count({target}), {source}, pages.name FROM links
+		JOIN pages ON links.{source}=pages.id
+		GROUP BY {source}
+		ORDER BY count({target}) DESC
+	'''.format(source=source, target=target)
+	):
+		# Now find all other pages that have a common link target
+		# and group these by number of occurrences
+		for match, page2 in notebook.links.db.execute('''
+			SELECT count({source}), pages.name FROM (
+				SELECT source, target FROM links
+				WHERE {target} IN (
+				    SELECT {target} FROM links WHERE {source} = {page1}
+				) AND source <> target -- avoid self references
+			) JOIN pages ON {source}=pages.id
 			GROUP BY {source}
-			ORDER BY count({target}) DESC
-		'''.format(source=source, target=target))
-
-	@classmethod
-	def compare_by_links(cls, notebook, dir):
-		assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
-		source, target = 'source', 'target'
-		if dir == LINK_DIR_BACKWARD:
-			source, target = target, source # reverse lookup
-
-		# Select all pages that have any links, sorted by number of links
-		for total, pageid, page1 in notebook.links.db.execute('''
-			SELECT count({target}), {source}, pages.name FROM links
-			JOIN pages ON links.{source}=pages.id
-			GROUP BY {source}
-			ORDER BY count({target}) DESC
-		'''.format(source=source, target=target)
+			ORDER BY count({source}) DESC
+		'''.format(source=source, target=target, page1=pageid)
 		):
-			# Now find all other pages that have a common link target
-			# and group these by number of occurrences
-			for match, page2 in notebook.links.db.execute('''
-				SELECT count({source}), pages.name FROM (
-					SELECT source, target FROM links
-					WHERE {target} IN (
-					    SELECT {target} FROM links WHERE {source} = {page1}
-					) AND source <> target -- avoid self references
-				) JOIN pages ON {source}=pages.id
-				GROUP BY {source}
-				ORDER BY count({source}) DESC
-			'''.format(source=source, target=target, page1=pageid)
-			):
-				if page1 != page2:
-					yield total, match, page1, page2
+			if page1 != page2:
+				yield total, match, page1, page2
 
 
 class LinkAnalysisCommand(NotebookCommand):
@@ -98,9 +97,9 @@ class LinkAnalysisCommand(NotebookCommand):
 			dir = LINK_DIR_FORWARD
 
 		if command == 'sort':
-			list = LinkAnalysisPlugin.sort_by_number_of_links(notebook, dir)
+			list = sort_by_number_of_links(notebook, dir)
 		elif command == 'compare':
-			list = LinkAnalysisPlugin.compare_by_links(notebook, dir)
+			list = compare_by_links(notebook, dir)
 		else:
 			raise UsageError, _('Unknown command: %s') % command
 
@@ -185,7 +184,7 @@ class PagesByNumberOfLinksDialog(Dialog):
 	def populate_listview(self):
 		model = self.listview.get_model()
 		model.clear()
-		for i, page in LinkAnalysisPlugin.sort_by_number_of_links(
+		for i, page in sort_by_number_of_links(
 			self.notebook, self.get_direction()
 		):
 			model.append((i, page))
