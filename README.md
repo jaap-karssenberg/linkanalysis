@@ -7,7 +7,7 @@ Usage: `zim --plugin linkanalysis COMMAND NOTEBOOK [PAGE]`
 
 Supported commands:
   - "`sort`" print out pages sorted by number of (back)links
-	- "`compare`" print out pairs of pages that share one or more (back)links
+  - "`compare`" print out pairs of pages that share one or more (back)links
 
 Options:
   - `-d` `--direction`:  "`forward`" for normal links or "`backward`" for backlinks
