@@ -5,7 +5,7 @@
 import gtk
 
 from zim.plugins import PluginClass, extends, WindowExtension
-from zim.main import NotebookCommand
+from zim.main import NotebookCommand, UsageError
 from zim.actions import action
 from zim.notebook.index.links import LINK_DIR_FORWARD, LINK_DIR_BACKWARD, LINK_DIR_BOTH
 from zim.gui.widgets import Dialog, SingleClickTreeView, ScrolledWindow, gtk_combobox_set_active_text
@@ -30,27 +30,57 @@ This plugin provides functions to analyze the link structure of a notebook
 
 	@classmethod
 	def sort_by_number_of_links(cls, notebook, dir):
-		if dir == LINK_DIR_FORWARD:
-			return notebook.links.db.execute('''
-				SELECT count(target), pages.name FROM links
-				JOIN pages ON links.source=pages.id
-				GROUP BY source
-				ORDER BY count(target) DESC
-			''')
-		elif dir == LINK_DIR_BACKWARD:
-			return notebook.links.db.execute('''
-				SELECT count(source), pages.name FROM links
-				JOIN pages ON links.target=pages.id
-				GROUP BY target
-				ORDER BY count(source) DESC
-			''')
-		else:
-			raise NotImplementedError
+		assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
+		source, target = 'source', 'target'
+		if dir == LINK_DIR_BACKWARD:
+			source, target = target, source # reverse lookup
+
+		return notebook.links.db.execute('''
+			SELECT count({target}), pages.name FROM links
+			JOIN pages ON links.{source}=pages.id
+			GROUP BY {source}
+			ORDER BY count({target}) DESC
+		'''.format(source=source, target=target))
+
+	@classmethod
+	def compare_by_links(cls, notebook, dir):
+		assert dir in (LINK_DIR_FORWARD, LINK_DIR_BACKWARD)
+		source, target = 'source', 'target'
+		if dir == LINK_DIR_BACKWARD:
+			source, target = target, source # reverse lookup
+
+		# Select all pages that have any links, sorted by number of links
+		for total, pageid, page1 in notebook.links.db.execute('''
+			SELECT count({target}), {source}, pages.name FROM links
+			JOIN pages ON links.{source}=pages.id
+			GROUP BY {source}
+			ORDER BY count({target}) DESC
+		'''.format(source=source, target=target)
+		):
+			# Now find all other pages that have a common link target
+			# and group these by number of occurrences
+			for match, page2 in notebook.links.db.execute('''
+				SELECT count({source}), pages.name FROM (
+					SELECT source, target FROM links
+					WHERE {target} IN (
+					    SELECT {target} FROM links WHERE {source} = {page1}
+					) AND source <> target -- avoid self references
+				) JOIN pages ON {source}=pages.id
+				GROUP BY {source}
+				ORDER BY count({source}) DESC
+			'''.format(source=source, target=target, page1=pageid)
+			):
+				if page1 != page2:
+					yield total, match, page1, page2
 
 
 class LinkAnalysisCommand(NotebookCommand):
 
 	arguments = ('COMMAND', 'NOTEBOOK', '[PAGE]')
+
+	options = (
+		('direction=', 'd', 'Link direction'),
+	)
 
 	def build_notebook(self):
 		# HACK around hardcoding of argument sequence
@@ -61,10 +91,16 @@ class LinkAnalysisCommand(NotebookCommand):
 	def run(self):
 		command, n, p = self.get_arguments()
 		notebook, p = self.build_notebook()
+
+		if self.opts.get('direction', 'forw').lower().startswith('back'):
+			dir = LINK_DIR_BACKWARD
+		else:
+			dir = LINK_DIR_FORWARD
+
 		if command == 'sort':
-			list = LinkAnalysisPlugin.sort_by_number_of_links(notebook, LINK_DIR_BACKWARD)
-		# TODO: "compare"
-		# TODO: "network"
+			list = LinkAnalysisPlugin.sort_by_number_of_links(notebook, dir)
+		elif command == 'compare':
+			list = LinkAnalysisPlugin.compare_by_links(notebook, dir)
 		else:
 			raise UsageError, _('Unknown command: %s') % command
 

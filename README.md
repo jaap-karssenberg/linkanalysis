@@ -6,8 +6,17 @@ Plugin for link structure analysis for the zim desktop wiki
 Usage: `zim --plugin linkanalysis COMMAND NOTEBOOK [PAGE]`
 
 Supported commands:
-  - "sort" print out pages sorted by number of (back)links
+  - "`sort`" print out pages sorted by number of (back)links
+	- "`compare`" print out pairs of pages that share one or more (back)links
 
+Options:
+  - `-d` `--direction`:  "`forward`" for normal links or "`backward`" for backlinks
+
+**sort** prints two columns: that total number of (back)links and the page
+
+**compare** prints four columns: the first is the total number of (back) links for
+the first page, the second is the number of matches between the pages and the
+third and fourth columns give the respective pages
 
 ## Concept
 Based on an idea by Laecy -- <laesaleigh@gmail.com>
@@ -27,16 +36,18 @@ Finally both cases could be analyzed for either backlinks, forward links, or bot
 
 
 ## Implementation
+- [ ] Test cases
 - [x] Sort pages by number of backlinks via commandline
 - [x] Sort pages by number of backlinks via dialog
 - [ ] Make listview in dialog robust for very large notebooks
-- [ ] Compare pages by number of backlinks via commandline
+- [x] Compare pages by number of backlinks via commandline
 - [ ] Compare pages by number of via backlinks dialog
 - [ ] Sort pages in "influence network" of a given starting page by degree and number of occurrences via commandline
 - [ ] Sort pages in "influence network" of a given starting page by degree and number of occurrences via dialog
 - [ ] Extend sort and compare with selection of links in "influence network"
 - [ ] Add filter option to compare pages to a given starting page
 - [ ] Add filter option to combine analysis view with regular search query
+- [ ] Add command / dialog to report on matches between a pair of pages
 
 
 ## Installing this plugin
