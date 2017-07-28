@@ -3,7 +3,7 @@ Plugin for link structure analysis for the zim desktop wiki
 
 ## Commandline usage
 
-Usage: `zim --plugin linkanalysis COMMAND NOTEBOOK [PAGE]`
+Usage: `zim --plugin linkanalysis COMMAND NOTEBOOK [PAGE1] [PAGE2]`
 
 Supported commands:
   - "`sort`" print out pages sorted by number of (back)links
@@ -16,7 +16,42 @@ Options:
 
 **compare** prints four columns: the first is the total number of (back) links for
 the first page, the second is the number of matches between the pages and the
-third and fourth columns give the respective pages
+third and fourth columns give the respective pages.
+
+**compare** with 2 page argments will just output a list of pages that match
+between the links or backlinks of these two pages
+
+## Examples
+
+Find what book is most often referred:
+```
+$ zim --plugin linkanalysis sort MyNotes -d back
+5 ReallyGoodBook
+3 SomeBook
+1 ThatOtherBook
+```
+
+Here "ReallyGoodBook" is referred by 5 other pages, "SomeBook" by 3 etc.
+
+
+Now find any common referrers:
+```
+$ zim --plugin linkanalysis compare MyNotes -d back
+5 2 ReallyGoodBook SomeBook
+3 2 SomeBook ReallyGoodBook
+```
+
+Of the 5 pages that refer to "ReallyGoodBook", 2 also refer to "SomeBook".
+
+To see which pages this are:
+```
+$ zim --plugin linkanalysis compare MyNotes -d back ReallyGoodBook SomeBook
+MustReadList
+BooksByTHatOneAuthor
+```
+
+So now you know which are the two pages that refer to these two books
+
 
 ## Concept
 Based on an idea by Laecy -- <laesaleigh@gmail.com>
@@ -47,7 +82,8 @@ Finally both cases could be analyzed for either backlinks, forward links, or bot
 - [ ] Extend sort and compare with selection of links in "influence network"
 - [ ] Add filter option to compare pages to a given starting page
 - [ ] Add filter option to combine analysis view with regular search query
-- [ ] Add command / dialog to report on matches between a pair of pages
+- [x] Add command to report on matches between a pair of pages
+- [ ] Add dialog to report on matches between a pair of pages
 
 
 ## Installing this plugin
